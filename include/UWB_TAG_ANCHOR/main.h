@@ -12,17 +12,9 @@ const char* host = "192.168.0.155";
 uint16_t portNum = 50000;
 
 // GLOBALS
-
-// Reference to the WiFiUDP interface
-WiFiUDP udp;
 // Linked list of known anchors
 struct MyLink* uwb_data;
-// Timestamp at which updated data was last broadcast
-unsigned long lastUpdateTime = 0;
-// Time interval (in ms) between updates
-unsigned int updateInterval = 200;
 
-void send_json(struct MyLink* p);
 #endif
 
 // We'll use a "short address" to make it easier to reference devices

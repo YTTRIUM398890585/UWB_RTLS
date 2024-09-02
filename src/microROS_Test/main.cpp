@@ -8,11 +8,6 @@
 #include <std_msgs/msg/int32.h>
 #include "micro_ros_interfaces/msg/two_int_test.h"
 
-
-#if !defined(MICRO_ROS_TRANSPORT_ARDUINO_SERIAL)
-#error This example is only avaliable for Arduino framework with serial transport.
-#endif
-
 rcl_publisher_t publisher;
 rcl_subscription_t subscriber;
 micro_ros_interfaces__msg__TwoIntTest send_msg;
@@ -27,6 +22,8 @@ rcl_timer_t timer;
 String debug_str = "0";
 
 bool onLed = true;
+
+#define LED 2
 
 #define RCCHECK(fn)                  \
     {                                \
@@ -49,7 +46,7 @@ void error_loop()
 {
     while (1)
     {
-        digitalWrite(LED_BUILTIN, HIGH);
+        digitalWrite(LED, HIGH);
         delay(100);
         Serial.println(debug_str);
     }
@@ -82,8 +79,8 @@ void subscription_callback(const void *msgin)
 
 void setup()
 {
-    pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, LOW);
+    pinMode(LED, OUTPUT);
+    digitalWrite(LED, LOW);
 
     // Configure transoport to be wifi
     IPAddress agent_ip(192, 168, 1, 113);
@@ -167,10 +164,10 @@ void loop()
 
     if (onLed)
     {
-        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+        digitalWrite(LED, !digitalRead(LED));
     }
     else
     {
-        digitalWrite(LED_BUILTIN, LOW);
+        digitalWrite(LED, LOW);
     }
 }

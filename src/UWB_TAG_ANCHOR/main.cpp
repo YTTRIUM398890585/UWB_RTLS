@@ -16,18 +16,19 @@
 #include <DW1000Ranging.h>
 
 // Include the C string library to convert macro defined string to char array
-#include <cstring> 
+#include <cstring>
 
-// The tag will connect to Wi-Fi to stream its distance readings to server as JSON using UDP protocol
+#include <ArduinoEigen.h>
+
 #ifdef IS_TAG
-#include <WiFi.h>
-#include <WiFiUdp.h>
 #include "UWB_TAG_ANCHOR/link.h"
-#include <ArduinoJson.h>
 #endif
 
 #include "UWB_TAG_ANCHOR/define.h"
 #include "UWB_TAG_ANCHOR/main.h"
+
+// All the functions in BasicLinearAlgebra are wrapped up inside the namespace BLA
+using namespace Eigen;
 
 void setup()
 {
@@ -37,8 +38,10 @@ void setup()
 
 	// Initialise SPI interface on specified SCK, MISO, MOSI pins
 	SPI.begin(18, 19, 23);
+
 	// Start up DW1000 chip on specified RESET, CS, and IRQ pins
 	DW1000Ranging.initCommunication(27, 4, 34);
+
 	// Assign callback handlers...
 	// ...when distance to a known tag changes
 	DW1000Ranging.attachNewRange(newRange);
@@ -47,10 +50,10 @@ void setup()
 	// ...when previously known device has been declared inactive and removed from network
 	DW1000Ranging.attachInactiveDevice(inactiveDevice);
 
-    // convert macro defined string to char array
-    // 24 is 23 characters + null terminator
-    char DEVICE_ADD_CHAR[24];
-    strcpy(DEVICE_ADD_CHAR, DEVICE_ADDRESS);
+	// convert macro defined string to char array
+	// 24 is 23 characters + null terminator
+	char DEVICE_ADD_CHAR[24];
+	strcpy(DEVICE_ADD_CHAR, DEVICE_ADDRESS);
 
 #ifdef IS_ANCHOR
 	// Start the DW-1000 as an anchor specifying pre-configured mode of operation
@@ -68,21 +71,6 @@ void setup()
 	DW1000Ranging.startAsTag(DEVICE_ADD_CHAR, DW1000.MODE_LONGDATA_RANGE_ACCURACY, false);
 	// Initialise the array to keep track of links to all anchors
 	uwb_data = init_link();
-	// Start a Wi-Fi connection to update host with tag's location
-	WiFi.mode(WIFI_STA);
-	WiFi.setSleep(false);
-	WiFi.begin(ssid, password);
-	while (WiFi.status() != WL_CONNECTED) {
-		delay(500);
-		Serial.print(".");
-	}
-	Serial.println(F("Connected"));
-	Serial.print(F("IP Address:"));
-	Serial.println(WiFi.localIP());
-	// Short pause before starting main loop
-	delay(500);
-	// Start the UDP interface
-	udp.begin(50000);
 #endif
 
 	// For debugging, let's print the address of this device
@@ -95,6 +83,9 @@ void setup()
 	Serial.println(shortAddress);
 
 	Serial.println("Setup complete");
+
+	// Short pause before starting main loop
+	delay(500);
 }
 
 void loop()
@@ -103,49 +94,65 @@ void loop()
 	DW1000Ranging.loop();
 
 #ifdef IS_TAG
-	if ((millis() - lastUpdateTime) > updateInterval) {
-		// Create the JSON document describing the array of links
-		send_json(uwb_data);
-		// Update the timestamp
-		lastUpdateTime = millis();
+	// Multilateration /////////////////////////////////////
+
+	// TODO: hardcode anchor coords for now
+	// anchor 0
+	struct MyLink* temp = find_link(uwb_data, 0 * 256 + 0);
+	if (temp != NULL) {
+		temp->anchor_coords[0] = 0.0; // x
+		temp->anchor_coords[1] = 0.0; // y
+		temp->anchor_coords[2] = 0.0; // z
 	}
+
+	// anchor 1
+	temp = find_link(uwb_data, 0 * 256 + 1);
+	if (temp != NULL) {
+		temp->anchor_coords[0] = 2.0; // x
+		temp->anchor_coords[1] = 0.0; // y
+		temp->anchor_coords[2] = 0.0; // z
+	}
+
+	// anchor 2
+	temp = find_link(uwb_data, 0 * 256 + 2);
+	if (temp != NULL) {
+		temp->anchor_coords[0] = 0.0; // x
+		temp->anchor_coords[1] = 2.0; // y
+		temp->anchor_coords[2] = 0.0; // z
+	}
+
+	// r = (ATA)^-1 AT d
+	// A = [2(x0-xi) 2(y0-yi) 2(z0-zi)] for anchor row i = 0, 1, 2
+	// d = [di^2 -d0^2 - xi^2 + x0^2 - yi^2 + y0^2 - zi^2 + z0^2 ] for anchor row i = 0, 1, 2
+	// r = [x y z]
+
+    Matrix<float, Dynamic, 3> A;
+    Matrix<float, Dynamic, 1> d;
+    Matrix<float, 3, 1> r;
+
+    temp = uwb_data;
+	while (temp->next != NULL) {
+        
+	}
+	return;
+
+	// clang-format off
+
+	// clang-format on
+
+#ifdef DEBUG
+	// Print the list of known anchors
+	print_link(uwb_data);
+#endif
+
 #endif
 }
 
 #ifdef IS_TAG
-void send_json(struct MyLink* p)
-{
-	// Allocate a temporary JsonDocument
-	// Use https://arduinojson.org/v6/assistant to compute the capacity.
-	StaticJsonDocument<500> doc;
-
-	// Use the devices's short address as the root JSON element
-	doc["id"] = shortAddress;
-
-	// Create the array of links
-	JsonArray links = doc.createNestedArray("links");
-	struct MyLink* temp = p;
-	while (temp->next != NULL) {
-		temp = temp->next;
-		JsonObject obj1 = links.createNestedObject();
-		obj1["a"] = temp->anchor_addr;
-		char range[5];
-		sprintf(range, "%.2f", temp->range[0]);
-		obj1["r"] = range;
-	}
-	// Send JSON to serial connection
-	serializeJson(doc, Serial);
-	Serial.println("");
-
-	// Send JSON over UDP
-	udp.beginPacket(host, portNum);
-	serializeJson(doc, udp);
-	udp.println();
-	udp.endPacket();
-}
+// TODO: Implement the function to send publish current tag coordinates to ros
 #endif
 
-// CALLBACK HANDLERS
+// CALLBACK HANDLERS FOR DW1000Ranging
 void newRange()
 {
 	//   // Display on OLED
