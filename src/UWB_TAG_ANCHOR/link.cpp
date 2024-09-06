@@ -10,11 +10,11 @@ struct MyLink* init_link()
 	p->range[1] = 0.0;
 	p->range[2] = 0.0;
 
-    p->anchor_coords[0] = 0.0;
+	p->anchor_coords[0] = 0.0;
 	p->anchor_coords[1] = 0.0;
 	p->anchor_coords[2] = 0.0;
 
-    p->dbm = 0.0;
+	p->dbm = 0.0;
 
 	p->next = NULL;
 
@@ -83,13 +83,18 @@ void update_link(struct MyLink* p, uint16_t addr, float range, float dbm)
 
 void print_link(struct MyLink* p)
 {
-    // WTF: if link list only has one element will it print???
+	// in this implementation, the first struct MyLink is a dummy struct MyLink
+	// all the real anchors is after it
 	struct MyLink* temp = p;
 	while (temp->next != NULL) {
-		// Serial.println("Dev %d:%d m", temp->next->anchor_addr, temp->next->range);
-		Serial.println(temp->next->anchor_addr, HEX);
-		Serial.println(temp->next->range[0]);
-		Serial.println(temp->next->dbm);
+		Serial.print("Dev ");
+		Serial.print(temp->next->anchor_addr, HEX);
+		Serial.print("\t");
+		Serial.print(temp->next->range[0]);
+		Serial.print(" m\t");
+		Serial.print(temp->next->dbm);
+		Serial.println(" dBm");
+
 		temp = temp->next;
 	}
 	return;

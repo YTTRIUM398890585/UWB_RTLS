@@ -34,13 +34,20 @@ void setup()
 {
 	// Initialise serial connection for debugging
 	Serial.begin(115200);
-	Serial.println(__FILE__ __DATE__);
+	Serial.println(__FILE__);
+	Serial.println(__DATE__);
 
 	// Initialise SPI interface on specified SCK, MISO, MOSI pins
 	SPI.begin(18, 19, 23);
 
 	// Start up DW1000 chip on specified RESET, CS, and IRQ pins
+	// CS in schematic shows 21 but its 4
 	DW1000Ranging.initCommunication(27, 4, 34);
+
+	// Set antenna delay for DW1000
+	// for tags is always the same
+	// for anchors it depends on calibration, agasint a tag with known distance and delay
+	DW1000.setAntennaDelay(ANTENNA_DELAY);
 
 	// Assign callback handlers...
 	// ...when distance to a known tag changes
@@ -81,6 +88,8 @@ void setup()
 	sprintf(shortAddress, "%02X%02X", currentShortAddress[1], currentShortAddress[0]);
 	Serial.print(F("Short Address: "));
 	Serial.println(shortAddress);
+    Serial.print(F("Antenna Delay: "));
+	Serial.println(DW1000.getAntennaDelay());
 
 	Serial.println("Setup complete");
 
@@ -94,51 +103,51 @@ void loop()
 	DW1000Ranging.loop();
 
 #ifdef IS_TAG
-	// Multilateration /////////////////////////////////////
+	// // Multilateration /////////////////////////////////////
 
-	// TODO: hardcode anchor coords for now
-	// anchor 0
-	struct MyLink* temp = find_link(uwb_data, 0 * 256 + 0);
-	if (temp != NULL) {
-		temp->anchor_coords[0] = 0.0; // x
-		temp->anchor_coords[1] = 0.0; // y
-		temp->anchor_coords[2] = 0.0; // z
-	}
+	// // TODO: hardcode anchor coords for now
+	// // anchor 0
+	// struct MyLink* temp = find_link(uwb_data, 0 * 256 + 0);
+	// if (temp != NULL) {
+	// 	temp->anchor_coords[0] = 0.0; // x
+	// 	temp->anchor_coords[1] = 0.0; // y
+	// 	temp->anchor_coords[2] = 0.0; // z
+	// }
 
-	// anchor 1
-	temp = find_link(uwb_data, 0 * 256 + 1);
-	if (temp != NULL) {
-		temp->anchor_coords[0] = 2.0; // x
-		temp->anchor_coords[1] = 0.0; // y
-		temp->anchor_coords[2] = 0.0; // z
-	}
+	// // anchor 1
+	// temp = find_link(uwb_data, 0 * 256 + 1);
+	// if (temp != NULL) {
+	// 	temp->anchor_coords[0] = 2.0; // x
+	// 	temp->anchor_coords[1] = 0.0; // y
+	// 	temp->anchor_coords[2] = 0.0; // z
+	// }
 
-	// anchor 2
-	temp = find_link(uwb_data, 0 * 256 + 2);
-	if (temp != NULL) {
-		temp->anchor_coords[0] = 0.0; // x
-		temp->anchor_coords[1] = 2.0; // y
-		temp->anchor_coords[2] = 0.0; // z
-	}
+	// // anchor 2
+	// temp = find_link(uwb_data, 0 * 256 + 2);
+	// if (temp != NULL) {
+	// 	temp->anchor_coords[0] = 0.0; // x
+	// 	temp->anchor_coords[1] = 2.0; // y
+	// 	temp->anchor_coords[2] = 0.0; // z
+	// }
 
-	// r = (ATA)^-1 AT d
-	// A = [2(x0-xi) 2(y0-yi) 2(z0-zi)] for anchor row i = 0, 1, 2
-	// d = [di^2 -d0^2 - xi^2 + x0^2 - yi^2 + y0^2 - zi^2 + z0^2 ] for anchor row i = 0, 1, 2
-	// r = [x y z]
+	// // r = (ATA)^-1 AT d
+	// // A = [2(x0-xi) 2(y0-yi) 2(z0-zi)] for anchor row i = 0, 1, 2
+	// // d = [di^2 -d0^2 - xi^2 + x0^2 - yi^2 + y0^2 - zi^2 + z0^2 ] for anchor row i = 0, 1, 2
+	// // r = [x y z]
 
-    Matrix<float, Dynamic, 3> A;
-    Matrix<float, Dynamic, 1> d;
-    Matrix<float, 3, 1> r;
+	// Matrix<float, Dynamic, 3> A;
+	// Matrix<float, Dynamic, 1> d;
+	// Matrix<float, 3, 1> r;
 
-    temp = uwb_data;
-	while (temp->next != NULL) {
-        
-	}
-	return;
+	// temp = uwb_data;
+	// while (temp->next != NULL) {
 
-	// clang-format off
+	// }
+	// return;
 
-	// clang-format on
+	// // clang-format off
+
+	// // clang-format on
 
 #ifdef DEBUG
 	// Print the list of known anchors
@@ -164,6 +173,18 @@ void newRange()
 	//   DW1000Ranging.getDistantDevice()->getRange()); display.printFixed(32,
 	//   16+(int)(DW1000Ranging.getDistantDevice()->getShortAddress())*8, buffer, STYLE_NORMAL);
 
+#ifdef DEBUG
+	Serial.print(F("Device range updated: "));
+	Serial.println(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
+
+    Serial.print("Dev ");
+    Serial.print(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
+    Serial.print("\t");
+    Serial.print(DW1000Ranging.getDistantDevice()->getRange());
+    Serial.print(" m\t");
+    Serial.print(DW1000Ranging.getDistantDevice()->getRXPower());
+    Serial.println(" dBm");
+#endif
 // Update links
 #ifdef IS_TAG
 	update_link(uwb_data,
@@ -175,8 +196,8 @@ void newRange()
 
 void newDevice(DW1000Device* device)
 {
-// Serial.print(F("New device detected! "));
-// Serial.println(device->getShortAddress(), HEX);
+	Serial.print(F("New device detected! "));
+	Serial.println(device->getShortAddress(), HEX);
 #ifdef IS_TAG
 	add_link(uwb_data, device->getShortAddress());
 #endif
@@ -184,8 +205,8 @@ void newDevice(DW1000Device* device)
 
 void inactiveDevice(DW1000Device* device)
 {
-// Serial.print(F("Device removed: "));
-// Serial.println(device->getShortAddress(), HEX);
+	Serial.print(F("Device removed: "));
+	Serial.println(device->getShortAddress(), HEX);
 #ifdef IS_TAG
 	delete_link(uwb_data, device->getShortAddress());
 #endif
