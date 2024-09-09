@@ -13,9 +13,7 @@ AnchorLinkedList::AnchorLinkedList()
 	// set values for dummy node
 	this->head->anchor_addr = 0;
 
-	this->head->range[0] = 0.0;
-	this->head->range[1] = 0.0;
-	this->head->range[2] = 0.0;
+    memset(this->head->distance, 0, sizeof(this->head->distance));
 
 	this->head->anchor_coords[0] = 0.0;
 	this->head->anchor_coords[1] = 0.0;
@@ -103,9 +101,7 @@ void AnchorLinkedList::add_anchor(uint16_t anchor_addr, float* p_anchor_coords)
 	new_node->anchor_addr = anchor_addr;
 
 	// set all distance to be 0, distance will be updated in the update anchor function
-	new_node->range[0] = 0.0;
-	new_node->range[1] = 0.0;
-	new_node->range[2] = 0.0;
+    memset(new_node->distance, 0, sizeof(new_node->distance));
 
 	// copy the x, y, z, coordinate
 	memcpy(new_node->anchor_coords, p_anchor_coords, 3);
@@ -131,18 +127,23 @@ void AnchorLinkedList::add_anchor(uint16_t anchor_addr, float* p_anchor_coords)
  * @brief update the anchor node with the wanted anchor address with the values from DW1000
  * 
  * @param anchor_addr wanted anchor address
- * @param range measured distance
+ * @param distance measured distance
  * @param dbm measured dBm
  */
-void AnchorLinkedList::update_anchor(uint16_t anchor_addr, float range, float dbm)
+void AnchorLinkedList::update_anchor(uint16_t anchor_addr, float distance, float dbm)
 {
 	// temp pointer pointing to the node with the wanted anchor address
 	AnchorNode* temp = this->find_anchor(anchor_addr);
 
 	if (temp != NULL) {
-		temp->range[2] = temp->range[1];
-		temp->range[1] = temp->range[0];
-		temp->range[0] = (range + temp->range[1] + temp->range[2]) / 3;
+        // shift the distance array to the right and update the first element with the new distance
+        for (auto i = sizeof(temp->distance)/sizeof(*temp->distance) - 1; i > 0; --i) {
+            temp->distance[i] = temp->distance[i - 1];
+        }
+
+        temp->distance[0] = distance;
+
+        // update dbm of the node
 		temp->dbm = dbm;
 	}
 	else {
@@ -209,11 +210,17 @@ void AnchorLinkedList::print_list()
 	while (temp->next != NULL) {
 		Serial.print("Dev ");
 		Serial.print(temp->next->anchor_addr, HEX);
-		Serial.print("  ");
-		Serial.print(temp->next->range[0]);
-		Serial.print(" m  ");
-		Serial.print(temp->next->dbm);
+		Serial.print(" ");
+        Serial.print(temp->next->dbm);
 		Serial.println(" dBm");
+
+        Serial.print("Distance (m): ");
+
+        for (auto i = 0; i < sizeof(this->head->distance)/sizeof(*this->head->distance); i++) {
+            Serial.print(temp->next->distance[i]);
+            Serial.print(" ");
+        }
+		Serial.println("");
 
 		temp = temp->next;
 	}

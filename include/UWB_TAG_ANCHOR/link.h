@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <string.h>
 
 class AnchorLinkedList
 {
@@ -7,11 +8,8 @@ private:
 	{
 		uint16_t anchor_addr;
 
-		// TODO: maybe do a moving average instead of average of whole history?
-		// 0: average of current, previous, previous previous readings
-		// 1: previous,
-		// 2: previous previous
-		float range[3];
+		// array of last 10 distance raw measurements
+		float distance[10];
 
 		// anchor coordinates [x, y, z]
 		float anchor_coords[3];
@@ -33,7 +31,7 @@ public:
     ~AnchorLinkedList();
 
 	void add_anchor(uint16_t anchor_addr, float* p_anchor_coords);
-    void update_anchor(uint16_t anchor_addr, float range, float dbm);
+    void update_anchor(uint16_t anchor_addr, float distance, float dbm);
 	void delete_anchor(uint16_t anchor_addr);
 
 	void print_list();	
