@@ -13,7 +13,7 @@ uint16_t portNum = 50000;
 
 // GLOBALS
 // Linked list of known anchors
-struct MyLink* uwb_data;
+AnchorLinkedList uwb_data;
 #endif
 
 // We'll use a "short address" to make it easier to reference devices

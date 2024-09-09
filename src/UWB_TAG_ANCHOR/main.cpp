@@ -77,8 +77,6 @@ void setup()
 #elif defined(IS_TAG)
 	// Start the DW-1000 as a tag (using the same mode as the anchors)
 	DW1000Ranging.startAsTag(DEVICE_ADD_CHAR, DW1000.MODE_LONGDATA_RANGE_ACCURACY, false);
-	// Initialise the array to keep track of links to all anchors
-	uwb_data = init_link();
 #endif
 
 	// For debugging, let's print the address of this device
@@ -108,7 +106,7 @@ void loop()
 
 	// // TODO: hardcode anchor coords for now
 	// // anchor 0
-	// struct MyLink* temp = find_link(uwb_data, 0 * 256 + 0);
+	// struct MyLink* temp = find_link(uwb_data, 0 * 256 + 1);
 	// if (temp != NULL) {
 	// 	temp->anchor_coords[0] = 0.0; // x
 	// 	temp->anchor_coords[1] = 0.0; // y
@@ -116,7 +114,7 @@ void loop()
 	// }
 
 	// // anchor 1
-	// temp = find_link(uwb_data, 0 * 256 + 1);
+	// temp = find_link(uwb_data, 0 * 256 + 2);
 	// if (temp != NULL) {
 	// 	temp->anchor_coords[0] = 2.0; // x
 	// 	temp->anchor_coords[1] = 0.0; // y
@@ -124,7 +122,7 @@ void loop()
 	// }
 
 	// // anchor 2
-	// temp = find_link(uwb_data, 0 * 256 + 2);
+	// temp = find_link(uwb_data, 0 * 256 + 3);
 	// if (temp != NULL) {
 	// 	temp->anchor_coords[0] = 0.0; // x
 	// 	temp->anchor_coords[1] = 2.0; // y
@@ -150,10 +148,16 @@ void loop()
 
 	// // clang-format on
 
-#ifdef DEBUG
-	// Print the list of known anchors
-	print_link(uwb_data);
-#endif
+	#ifdef DEBUG
+		// Print the list of known anchors
+        static unsigned long last_print = 0;
+        if (millis() - last_print > 100) {
+            Serial.print("millis: ");
+            Serial.println(millis());
+            uwb_data.print_list();
+            last_print = millis();
+        }
+	#endif
 
 #endif
 }
@@ -165,48 +169,50 @@ void loop()
 // CALLBACK HANDLERS FOR DW1000Ranging
 void newRange()
 {
-#ifdef DEBUG
-	Serial.print(F("Device range updated: "));
-	Serial.println(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
+// #ifdef DEBUG
+// 	Serial.print(F("Device range updated: "));
+// 	Serial.println(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
 
-	Serial.print("Dev ");
-	Serial.print(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
-	Serial.print("\t");
-	Serial.print(DW1000Ranging.getDistantDevice()->getRange());
-	Serial.print(" m\t");
-	Serial.print(DW1000Ranging.getDistantDevice()->getRXPower());
-	Serial.println(" dBm");
-#endif
+// 	Serial.print("Dev ");
+// 	Serial.print(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
+// 	Serial.print("\t");
+// 	Serial.print(DW1000Ranging.getDistantDevice()->getRange());
+// 	Serial.print(" m\t");
+// 	Serial.print(DW1000Ranging.getDistantDevice()->getRXPower());
+// 	Serial.println(" dBm");
+// #endif
 
 // Update links
 #ifdef IS_TAG
-	update_link(uwb_data,
-	            DW1000Ranging.getDistantDevice()->getShortAddress(),
-	            DW1000Ranging.getDistantDevice()->getRange(),
-	            DW1000Ranging.getDistantDevice()->getRXPower());
+	uwb_data.update_anchor(DW1000Ranging.getDistantDevice()->getShortAddress(),
+	                       DW1000Ranging.getDistantDevice()->getRange(),
+	                       DW1000Ranging.getDistantDevice()->getRXPower());
 #endif
 }
 
 void newDevice(DW1000Device* device)
 {
-#ifdef DEBUG
-	Serial.print(F("New device detected! "));
-	Serial.println(device->getShortAddress(), HEX);
-#endif
+	// #ifdef DEBUG
+	// 	Serial.print(F("New device detected! "));
+	// 	Serial.println(device->getShortAddress(), HEX);
+	// #endif
+
+    // TODO: somehow get the anchor to publish its own coords
+    float todo[] = {0, 0, 0};
 
 #ifdef IS_TAG
-	add_link(uwb_data, device->getShortAddress());
+	uwb_data.add_anchor(device->getShortAddress(), todo);
 #endif
 }
 
 void inactiveDevice(DW1000Device* device)
 {
-#ifdef DEBUG
-	Serial.print(F("Device removed: "));
-	Serial.println(device->getShortAddress(), HEX);
-#endif
+	// #ifdef DEBUG
+	// 	Serial.print(F("Device removed: "));
+	// 	Serial.println(device->getShortAddress(), HEX);
+	// #endif
 
 #ifdef IS_TAG
-	delete_link(uwb_data, device->getShortAddress());
+	uwb_data.delete_anchor(device->getShortAddress());
 #endif
 }
