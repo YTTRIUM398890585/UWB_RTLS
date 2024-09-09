@@ -38,15 +38,15 @@ void setup()
 	Serial.println(__DATE__);
 
 	// Initialise SPI interface on specified SCK, MISO, MOSI pins
-	SPI.begin(18, 19, 23);
+	SPI.begin(PIN_SPI_SCK, PIN_SPI_MISO, PIN_SPI_MOSI);
 
 	// Start up DW1000 chip on specified RESET, CS, and IRQ pins
-	// CS in schematic shows 21 but its 4
-	DW1000Ranging.initCommunication(27, 4, 34);
+	DW1000Ranging.initCommunication(PIN_RST, PIN_SPI_CS, PIN_IRQ);
 
 	// Set antenna delay for DW1000
-	// for tags is always the same
-	// for anchors it depends on calibration, agasint a tag with known distance and delay
+	// for tags is always the same, 0
+	// for anchors it depends on calibration, agasint a tag with known distance and delay = 0
+	// ANTENNA_DELAY is defined uniquely for each anchor in platformio.ini
 	DW1000.setAntennaDelay(ANTENNA_DELAY);
 
 	// Assign callback handlers...
@@ -58,6 +58,7 @@ void setup()
 	DW1000Ranging.attachInactiveDevice(inactiveDevice);
 
 	// convert macro defined string to char array
+	// each device has a unique address defined in platformio.ini
 	// 24 is 23 characters + null terminator
 	char DEVICE_ADD_CHAR[24];
 	strcpy(DEVICE_ADD_CHAR, DEVICE_ADDRESS);
@@ -88,7 +89,7 @@ void setup()
 	sprintf(shortAddress, "%02X%02X", currentShortAddress[1], currentShortAddress[0]);
 	Serial.print(F("Short Address: "));
 	Serial.println(shortAddress);
-    Serial.print(F("Antenna Delay: "));
+	Serial.print(F("Antenna Delay: "));
 	Serial.println(DW1000.getAntennaDelay());
 
 	Serial.println("Setup complete");
@@ -164,27 +165,19 @@ void loop()
 // CALLBACK HANDLERS FOR DW1000Ranging
 void newRange()
 {
-	//   // Display on OLED
-	//   char buffer[21];
-	//   //display.clear();
-	//   snprintf(buffer, sizeof buffer, "%04x", DW1000Ranging.getDistantDevice()->getShortAddress());
-	//   display.printFixed(0, 16+(int)(DW1000Ranging.getDistantDevice()->getShortAddress())*8, buffer,
-	//   STYLE_NORMAL); int ret = snprintf(buffer, sizeof buffer, "%.2f",
-	//   DW1000Ranging.getDistantDevice()->getRange()); display.printFixed(32,
-	//   16+(int)(DW1000Ranging.getDistantDevice()->getShortAddress())*8, buffer, STYLE_NORMAL);
-
 #ifdef DEBUG
 	Serial.print(F("Device range updated: "));
 	Serial.println(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
 
-    Serial.print("Dev ");
-    Serial.print(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
-    Serial.print("\t");
-    Serial.print(DW1000Ranging.getDistantDevice()->getRange());
-    Serial.print(" m\t");
-    Serial.print(DW1000Ranging.getDistantDevice()->getRXPower());
-    Serial.println(" dBm");
+	Serial.print("Dev ");
+	Serial.print(DW1000Ranging.getDistantDevice()->getShortAddress(), HEX);
+	Serial.print("\t");
+	Serial.print(DW1000Ranging.getDistantDevice()->getRange());
+	Serial.print(" m\t");
+	Serial.print(DW1000Ranging.getDistantDevice()->getRXPower());
+	Serial.println(" dBm");
 #endif
+
 // Update links
 #ifdef IS_TAG
 	update_link(uwb_data,
@@ -196,8 +189,11 @@ void newRange()
 
 void newDevice(DW1000Device* device)
 {
+#ifdef DEBUG
 	Serial.print(F("New device detected! "));
 	Serial.println(device->getShortAddress(), HEX);
+#endif
+
 #ifdef IS_TAG
 	add_link(uwb_data, device->getShortAddress());
 #endif
@@ -205,8 +201,11 @@ void newDevice(DW1000Device* device)
 
 void inactiveDevice(DW1000Device* device)
 {
+#ifdef DEBUG
 	Serial.print(F("Device removed: "));
 	Serial.println(device->getShortAddress(), HEX);
+#endif
+
 #ifdef IS_TAG
 	delete_link(uwb_data, device->getShortAddress());
 #endif
