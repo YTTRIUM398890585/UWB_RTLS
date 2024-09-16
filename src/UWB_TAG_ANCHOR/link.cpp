@@ -104,7 +104,7 @@ void AnchorLinkedList::add_anchor(uint16_t anchor_addr, float* p_anchor_coords)
     memset(new_node->distance, 0, sizeof(new_node->distance));
 
 	// copy the x, y, z, coordinate
-	memcpy(new_node->anchor_coords, p_anchor_coords, 3);
+	memcpy(new_node->anchor_coords, p_anchor_coords, sizeof(new_node->anchor_coords));
 
 	// set dbm to be 0, dbm will be updated in the update anchor function
 	new_node->dbm = 0.0;
@@ -212,7 +212,13 @@ void AnchorLinkedList::print_list()
 		Serial.print(temp->next->anchor_addr, HEX);
 		Serial.print(" ");
         Serial.print(temp->next->dbm);
-		Serial.println(" dBm");
+		Serial.print(" dBm ");
+        Serial.print("Coords (m): ");
+        Serial.print(temp->next->anchor_coords[0]);
+        Serial.print(" ");
+        Serial.print(temp->next->anchor_coords[1]);
+        Serial.print(" ");
+        Serial.println(temp->next->anchor_coords[2]);
 
         Serial.print("Distance (m): ");
 
