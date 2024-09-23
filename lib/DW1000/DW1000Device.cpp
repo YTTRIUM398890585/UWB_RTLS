@@ -74,6 +74,8 @@ void DW1000Device::setFPPower(float FPPower) { _FPPower = round(FPPower*100); }
 
 void DW1000Device::setQuality(float quality) { _quality = round(quality*100); }
 
+void DW1000Device::setCoords(float* sourceArr) { memcpy(_anchor_coords, sourceArr, sizeof(_anchor_coords)); }
+
 
 byte* DW1000Device::getByteAddress() {
 	return _ownAddress;
@@ -121,6 +123,8 @@ float DW1000Device::getRXPower() { return float(_RXPower)/100.0f; }
 float DW1000Device::getFPPower() { return float(_FPPower)/100.0f; }
 
 float DW1000Device::getQuality() { return float(_quality)/100.0f; }
+
+void DW1000Device::getCoords(float* destArr) { memcpy(destArr, _anchor_coords, sizeof(_anchor_coords)); }
 
 
 void DW1000Device::randomShortAddress() {

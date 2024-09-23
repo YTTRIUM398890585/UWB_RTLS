@@ -38,7 +38,18 @@ void initDW1000(uint8_t spi_sck, uint8_t spi_miso, uint8_t spi_mosi, uint8_t dw1
 	// - MODE_SHORTDATA_FAST_ACCURACY (6.8Mb/s data rate, 64 MHz PRF and short preambles)
 	// - MODE_LONGDATA_FAST_ACCURACY (6.8Mb/s data rate, 64 MHz PRF and long preambles)
 	// - MODE_LONGDATA_RANGE_ACCURACY (110kb/s data rate, 64 MHz PRF and long preambles)
-	DW1000Ranging.startAsAnchor(DEVICE_ADD_CHAR, DW1000.MODE_LONGDATA_RANGE_ACCURACY, false);
+
+    float anchor_coords[] = {ANCHOR_COORDS_X, ANCHOR_COORDS_Y, ANCHOR_COORDS_Z};
+	DW1000Ranging.startAsAnchor(DEVICE_ADD_CHAR, DW1000.MODE_LONGDATA_RANGE_ACCURACY, false, anchor_coords);
+
+	Serial.print(F("Anchor Coords: ("));
+	Serial.print(ANCHOR_COORDS_X);
+	Serial.print(", ");
+	Serial.print(ANCHOR_COORDS_Y);
+	Serial.print(", ");
+	Serial.print(ANCHOR_COORDS_Z);
+	Serial.println(")");
+
 
 #elif defined(IS_TAG)
 	// Start the DW-1000 as a tag (using the same mode as the anchors)
@@ -89,11 +100,12 @@ void newDevice(DW1000Device* device)
 	// 	Serial.println(device->getShortAddress(), HEX);
 	// #endif
 
-	// TODO: somehow get the anchor to publish its own coords
-	float todo[] = { 0, 0, 0 };
+    float anchor_coords[3];
+
+    device->getCoords(anchor_coords);
 
 #ifdef IS_TAG
-	uwb_data.add_anchor(device->getShortAddress(), todo);
+	uwb_data.add_anchor(device->getShortAddress(), anchor_coords);
 #endif
 }
 

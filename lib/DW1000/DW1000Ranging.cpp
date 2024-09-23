@@ -85,6 +85,8 @@ void (* DW1000RangingClass::_handleBlinkDevice)(DW1000Device*) = 0;
 void (* DW1000RangingClass::_handleNewDevice)(DW1000Device*) = 0;
 void (* DW1000RangingClass::_handleInactiveDevice)(DW1000Device*) = 0;
 
+float DW1000RangingClass::_anchor_coords[3];
+
 /* ###########################################################################
  * #### Init and end #######################################################
  * ######################################################################### */
@@ -159,7 +161,7 @@ void DW1000RangingClass::generalStart() {
 }
 
 
-void DW1000RangingClass::startAsAnchor(char address[], const byte mode[], const bool randomShortAddress) {
+void DW1000RangingClass::startAsAnchor(char address[], const byte mode[], const bool randomShortAddress, float anchor_coords[]) {
 	//save the address
 	DW1000.convertToByte(address, _currentAddress);
 	//write the address on the DW1000 chip
@@ -177,6 +179,9 @@ void DW1000RangingClass::startAsAnchor(char address[], const byte mode[], const 
 		_currentShortAddress[0] = _currentAddress[LEN_EUI-1];
 		_currentShortAddress[1] = _currentAddress[LEN_EUI-2];
 	}
+
+    // Set anchor coordinates
+	memcpy(_anchor_coords, anchor_coords, sizeof(_anchor_coords));
 	
 	// Configure the network for mac filtering
 	//(device Address, network ID, frequency)
@@ -473,9 +478,13 @@ void DW1000RangingClass::loop() {
 		else if(messageType == RANGING_INIT && _type == TAG) {
 			
 			byte address[2];
-			_globalMac.decodeLongMACFrame(data, address);
+            float anchor_coords[3];
+
+			_globalMac.decodeLongMACFrame(data, address, anchor_coords);
 			//we crate a new device with the anchor
 			DW1000Device myAnchor(address, true);
+
+            myAnchor.setCoords(anchor_coords);
 			
 			if(addNetworkDevices(&myAnchor, true)) {
 				if(_handleNewDevice != 0) {
@@ -782,7 +791,7 @@ void DW1000RangingClass::transmitBlink() {
 void DW1000RangingClass::transmitRangingInit(DW1000Device* myDistantDevice) {
 	transmitInit();
 	//we generate the mac frame for a ranging init message
-	_globalMac.generateLongMACFrame(data, _currentShortAddress, myDistantDevice->getByteAddress());
+	_globalMac.generateLongMACFrame(data, _currentShortAddress, _anchor_coords, myDistantDevice->getByteAddress());
 	//we define the function code
 	data[LONG_MAC_LEN] = RANGING_INIT;
 	

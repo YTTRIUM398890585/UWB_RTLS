@@ -81,7 +81,7 @@ public:
 	static void    initCommunication(uint8_t myRST = DEFAULT_RST_PIN, uint8_t mySS = DEFAULT_SPI_SS_PIN, uint8_t myIRQ = 2);
 	static void    configureNetwork(uint16_t deviceAddress, uint16_t networkId, const byte mode[]);
 	static void    generalStart();
-	static void    startAsAnchor(char address[], const byte mode[], const bool randomShortAddress = true);
+	static void    startAsAnchor(char address[], const byte mode[], const bool randomShortAddress, float anchor_coords[]);
 	static void    startAsTag(char address[], const byte mode[], const bool randomShortAddress = true);
 	static boolean addNetworkDevices(DW1000Device* device, boolean shortAddress);
 	static boolean addNetworkDevices(DW1000Device* device);
@@ -140,6 +140,9 @@ private:
 	static void (* _handleBlinkDevice)(DW1000Device*);
 	static void (* _handleNewDevice)(DW1000Device*);
 	static void (* _handleInactiveDevice)(DW1000Device*);
+
+    //Coordinate of the anchor (only for anchors)
+    static float _anchor_coords[3];
 	
 	//sketch type (tag or anchor)
 	static int16_t          _type; //0 for tag and 1 for anchor
