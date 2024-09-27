@@ -24,7 +24,7 @@ using namespace Eigen;
 #include "UWB_TAG_ANCHOR/DW1000Handlers.h"
 
 // TODO: Implement the function to send publish current tag coordinates to ros
-// TODO: Implement publish anchor coords 
+// TODO: Implement publish anchor coords
 
 void setup()
 {
@@ -40,21 +40,21 @@ void setup()
 	// Short pause before starting main loop
 	delay(500);
 
-//     // TODO: hardcode anchor coords for now
-// 	float todo1[] = { 0.0, 0.0, 0.0 };
-// 	uwb_data.add_anchor(0 * 256 + 1, todo1);
+	//     // TODO: hardcode anchor coords for now
+	// 	float todo1[] = { 0.0, 0.0, 0.0 };
+	// 	uwb_data.add_anchor(0 * 256 + 1, todo1);
 
-// 	float todo2[] = { 7.0, 0.0, 2.0 };
-// 	uwb_data.add_anchor(0 * 256 + 2, todo2);
+	// 	float todo2[] = { 7.0, 0.0, 2.0 };
+	// 	uwb_data.add_anchor(0 * 256 + 2, todo2);
 
-// 	float todo3[] = { 0.0, 7.0, 2.0 };
-// 	uwb_data.add_anchor(0 * 256 + 3, todo3);
+	// 	float todo3[] = { 0.0, 7.0, 2.0 };
+	// 	uwb_data.add_anchor(0 * 256 + 3, todo3);
 
-// 	float todo4[] = { 7.0, 7.0, 0.0 };
-// 	uwb_data.add_anchor(0 * 256 + 4, todo4);
+	// 	float todo4[] = { 7.0, 7.0, 0.0 };
+	// 	uwb_data.add_anchor(0 * 256 + 4, todo4);
 
-// 	float todo5[] = { 3.5, 2.0, 1.0 };
-// 	uwb_data.add_anchor(0 * 256 + 5, todo5);
+	// 	float todo5[] = { 3.5, 2.0, 1.0 };
+	// 	uwb_data.add_anchor(0 * 256 + 5, todo5);
 }
 
 void loop()
@@ -81,13 +81,15 @@ void loop()
 	// delay(1000);
 
 #ifdef IS_TAG
-    Vector3f r;
+	Vector3f r;
 
-#ifdef DEBUG
-	r = multilateration(uwb_data, true);
-#else
+	// #ifdef DEBUG
+	// 	r = multilateration(uwb_data, true);
+	// #else
+	// 	r = multilateration(uwb_data, false);
+	// #endif
+
 	r = multilateration(uwb_data, false);
-#endif
 
 #ifdef DEBUG
 	// Print the list of known anchors and current tag coordinates
@@ -95,7 +97,7 @@ void loop()
 		Serial.print("millis: ");
 		Serial.println(millis());
 		uwb_data.print_list();
-        printVector(r, "Tag Coordinates");
+		printVector(r, "Tag Coordinates");
 		last_print = millis();
 	}
 #endif
