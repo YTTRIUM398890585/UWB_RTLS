@@ -52,8 +52,11 @@ void setup()
 	char DEVICE_ADD_CHAR[24];
 	strcpy(DEVICE_ADD_CHAR, DEVICE_ADDRESS);
 
-	// start the module as anchor, don't assign random short address
-	DW1000Ranging.startAsAnchor(DEVICE_ADD_CHAR, DW1000.MODE_LONGDATA_RANGE_ACCURACY, false);
+    // this is for localisation, so for calibration just fill in dummy values
+    float anchor_coords[] = {0, 0, 0};
+
+    // start the module as anchor, don't assign random short address
+	DW1000Ranging.startAsAnchor(DEVICE_ADD_CHAR, DW1000.MODE_LONGDATA_RANGE_LOWPOWER, false, anchor_coords);
 }
 
 void loop()
