@@ -19,6 +19,7 @@ using namespace Eigen;
 #ifdef IS_TAG
 #include "UWB_TAG_ANCHOR/utils.h"
 #include "UWB_TAG_ANCHOR/multilateration.h"
+#include "UWB_TAG_ANCHOR/microROS.h"
 #endif
 
 #include "UWB_TAG_ANCHOR/DW1000Handlers.h"
@@ -33,28 +34,18 @@ void setup()
 	Serial.println(__FILE__);
 	Serial.println(__DATE__);
 
+	// Initialise UWB device
 	initDW1000(PIN_SPI_SCK, PIN_SPI_MISO, PIN_SPI_MOSI, PIN_RST, PIN_SPI_CS, PIN_IRQ, ANTENNA_DELAY);
+
+#ifdef IS_TAG
+	// Initialise microROS
+	setupMicroRos();
+#endif
 
 	Serial.println("Setup complete");
 
 	// Short pause before starting main loop
 	delay(500);
-
-	//     // TODO: hardcode anchor coords for now
-	// 	float todo1[] = { 0.0, 0.0, 0.0 };
-	// 	uwb_data.add_anchor(0 * 256 + 1, todo1);
-
-	// 	float todo2[] = { 7.0, 0.0, 2.0 };
-	// 	uwb_data.add_anchor(0 * 256 + 2, todo2);
-
-	// 	float todo3[] = { 0.0, 7.0, 2.0 };
-	// 	uwb_data.add_anchor(0 * 256 + 3, todo3);
-
-	// 	float todo4[] = { 7.0, 7.0, 0.0 };
-	// 	uwb_data.add_anchor(0 * 256 + 4, todo4);
-
-	// 	float todo5[] = { 3.5, 2.0, 1.0 };
-	// 	uwb_data.add_anchor(0 * 256 + 5, todo5);
 }
 
 void loop()
@@ -62,34 +53,15 @@ void loop()
 	// This needs to be called on every iteration of the main program loop
 	DW1000Ranging.loop();
 
-	// // TODO: hardcode anchor coords for now
-	// // anchor 1
-	// uwb_data.update_anchor(0 * 256 + 1, 8.17, -10);
-
-	// // anchor 2
-	// uwb_data.update_anchor(0 * 256 + 2, 8.48, -20);
-
-	// // anchor 3
-	// uwb_data.update_anchor(0 * 256 + 3, 3.91, -30);
-
-	// // anchor 4
-	// uwb_data.update_anchor(0 * 256 + 4, 3.63, -40);
-
-	// // anchor 4
-	// uwb_data.update_anchor(0 * 256 + 5, 5.51, -50);
-
-	// delay(1000);
-
 #ifdef IS_TAG
-	Vector3f r;
+	Vector3f tagCoords;
 
-	// #ifdef DEBUG
-	// 	r = multilateration(uwb_data, true);
-	// #else
-	// 	r = multilateration(uwb_data, false);
-	// #endif
+	tagCoords = multilateration(uwb_data, false);
 
-	r = multilateration(uwb_data, false);
+	if (millis() - last_pub > 500) {
+		rosPublishLocation(uwb_data, tagCoords);
+		last_pub = millis();
+	}
 
 #ifdef DEBUG
 	// Print the list of known anchors and current tag coordinates
@@ -97,7 +69,7 @@ void loop()
 		Serial.print("millis: ");
 		Serial.println(millis());
 		uwb_data.print_list();
-		printVector(r, "Tag Coordinates");
+		printVector(tagCoords, "Tag Coordinates");
 		last_print = millis();
 	}
 #endif

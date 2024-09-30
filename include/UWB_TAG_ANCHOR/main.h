@@ -11,6 +11,8 @@ const char* password = "INSERT WIFI PASSWORD HERE";
 const char* host = "192.168.0.155";
 uint16_t portNum = 50000;
 
+unsigned long last_pub = 0;
+
 #endif
 
 #ifdef DEBUG
