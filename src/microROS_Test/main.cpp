@@ -82,14 +82,19 @@ void setup()
     pinMode(LED, OUTPUT);
     digitalWrite(LED, LOW);
 
-    // Configure transoport to be wifi
-    IPAddress agent_ip(192, 168, 1, 113);
-    size_t agent_port = 8888;
+    // // Configure transoport to be wifi
+    // IPAddress agent_ip(192, 168, 28, 96);
+    // size_t agent_port = 8888;
 
-    char ssid[] = "WIFI_SSID";
-    char psk[]= "WIFI_PSK";
+    // char ssid[] = "";
+    // char psk[]= "";
 
-    set_microros_wifi_transports(ssid, psk, agent_ip, agent_port);
+    // set_microros_wifi_transports(ssid, psk, agent_ip, agent_port);
+    // delay(2000);
+
+    // Configure transoport to be serial
+    Serial.begin(115200);
+    set_microros_serial_transports(Serial);
     delay(2000);
 
     allocator = rcl_get_default_allocator();
