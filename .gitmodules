@@ -1,0 +1,3 @@
+[submodule "wb_ws/src/micro-ROS-Agent"]
+	path = wb_ws/src/micro-ROS-Agent
+	url = https://github.com/micro-ROS/micro-ROS-Agent.git
