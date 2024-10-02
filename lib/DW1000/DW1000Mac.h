@@ -31,7 +31,7 @@
 #define PAN_ID_2 0xDE
 
 #define SHORT_MAC_LEN 9
-#define LONG_MAC_LEN 15
+#define LONG_MAC_LEN 27
 
 
 #ifndef _DW1000MAC_H_INCLUDED
@@ -69,12 +69,12 @@ public:
 	//the long frame for Ranging init
 	//8 bytes for Destination Address and 2 bytes for Source Address
 	//total of
-	void generateLongMACFrame(byte frame[], byte sourceShortAddress[], byte destinationAddress[]);
+	void generateLongMACFrame(byte frame[], byte sourceShortAddress[], float anchor_coords[], byte destinationAddress[]);
 	
 	//in order to decode the frame and save source Address!
 	void decodeBlinkFrame(byte frame[], byte address[], byte shortAddress[]);
 	void decodeShortMACFrame(byte frame[], byte address[]);
-	void decodeLongMACFrame(byte frame[], byte address[]);
+	void decodeLongMACFrame(byte frame[], byte address[], float anchor_coords[]);
 	
 	void incrementSeqNumber();
 

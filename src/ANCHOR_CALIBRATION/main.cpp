@@ -25,6 +25,9 @@
 #include "ANCHOR_CALIBRATION/define.h"
 #include "ANCHOR_CALIBRATION/main.h"
 
+// this is not used, but included so that the same environment can be used for cal and normal operation, wifi.h dependancy bullshits
+#include <micro_ros_platformio.h>
+
 void setup()
 {
 	Serial.begin(115200);
@@ -52,8 +55,11 @@ void setup()
 	char DEVICE_ADD_CHAR[24];
 	strcpy(DEVICE_ADD_CHAR, DEVICE_ADDRESS);
 
-	// start the module as anchor, don't assign random short address
-	DW1000Ranging.startAsAnchor(DEVICE_ADD_CHAR, DW1000.MODE_LONGDATA_RANGE_ACCURACY, false);
+    // this is for localisation, so for calibration just fill in dummy values
+    float anchor_coords[] = {0, 0, 0};
+
+    // start the module as anchor, don't assign random short address
+	DW1000Ranging.startAsAnchor(DEVICE_ADD_CHAR, DW1000.MODE_LONGDATA_RANGE_LOWPOWER, false, anchor_coords);
 }
 
 void loop()
@@ -83,7 +89,7 @@ void newRange()
 
         Serial.print(" ,");
         Serial.print(dist);
-        if (Adelay_delta == 1) {
+        if (Adelay_delta == 0) {
             // Serial.print(" m, final Adelay ");
             // Serial.println(this_anchor_Adelay);
             calibrated = true;
@@ -91,7 +97,7 @@ void newRange()
 
         float this_delta = dist - this_anchor_target_distance; // error in measured distance
 
-        if (this_delta * last_delta < 0.0) Adelay_delta = Adelay_delta / 2; // sign changed, reduce step size
+        if (this_delta * last_delta < 0.0) Adelay_delta = Adelay_delta - 1; // sign changed, reduce step size
         last_delta = this_delta;
 
         if (this_delta > 0.0)

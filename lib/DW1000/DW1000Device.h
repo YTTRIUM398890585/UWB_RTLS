@@ -52,6 +52,8 @@ public:
 	void setRXPower(float power);
 	void setFPPower(float power);
 	void setQuality(float quality);
+
+	void setCoords(float* sourceArr);
 	
 	void setReplyDelayTime(uint16_t time) { _replyDelayTimeUS = time; }
 	
@@ -73,6 +75,8 @@ public:
 	float getRXPower();
 	float getFPPower();
 	float getQuality();
+
+	void getCoords(float* destArr);
 	
 	boolean isAddressEqual(DW1000Device* device);
 	boolean isShortAddressEqual(DW1000Device* device);
@@ -102,9 +106,11 @@ private:
 	int16_t _RXPower;
 	int16_t _FPPower;
 	int16_t _quality;
+
+    //Coordinate of the anchor (only for anchors)
+    float _anchor_coords[3];
 	
 	void randomShortAddress();
-	
 };
 
 

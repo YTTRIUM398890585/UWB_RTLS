@@ -1,0 +1,4 @@
+uint8 anchor_addr
+geometry_msgs/Point anchor_coords
+float32 anchor_distance
+float32 dbm

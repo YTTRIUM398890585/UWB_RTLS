@@ -11,15 +11,10 @@ const char* password = "INSERT WIFI PASSWORD HERE";
 const char* host = "192.168.0.155";
 uint16_t portNum = 50000;
 
-// GLOBALS
-// Linked list of known anchors
-struct MyLink* uwb_data;
+unsigned long last_pub = 0;
+
 #endif
 
-// We'll use a "short address" to make it easier to reference devices
-char shortAddress[6];
-
-// CALLBACK HANDLERS
-void newRange();
-void newDevice(DW1000Device* device);
-void inactiveDevice(DW1000Device* device);
+#ifdef DEBUG
+	unsigned long last_print = 0;
+#endif

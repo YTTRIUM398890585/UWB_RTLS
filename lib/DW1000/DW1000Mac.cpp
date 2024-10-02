@@ -85,10 +85,12 @@ void DW1000Mac::generateShortMACFrame(byte frame[], byte sourceShortAddress[], b
 	incrementSeqNumber();
 }
 
-//the long frame for Ranging init
-//8 bytes for Destination Address and 2 bytes for Source Address
-//total=15
-void DW1000Mac::generateLongMACFrame(byte frame[], byte sourceShortAddress[], byte destinationAddress[]) {
+//the long frame for Ranging init only
+// byte 0 - 4: Frame Control
+// byte 5 - 12: Destination Address
+// byte 13 - 14: Source Address
+// byte 15 - 26: Anchor Coordinates
+void DW1000Mac::generateLongMACFrame(byte frame[], byte sourceShortAddress[], float anchor_coords[], byte destinationAddress[]) {
 	//Frame controle
 	*frame     = FC_1;
 	*(frame+1) = FC_2;
@@ -107,6 +109,9 @@ void DW1000Mac::generateLongMACFrame(byte frame[], byte sourceShortAddress[], by
 	byte sourceShortAddressReverse[2];
 	reverseArray(sourceShortAddressReverse, sourceShortAddress, 2);
 	memcpy(frame+13, sourceShortAddressReverse, 2);
+
+    //anchor coordinates (3 floats)
+    memcpy(frame+15, anchor_coords, 12);
 	
 	//we increment seqNumber
 	incrementSeqNumber();
@@ -133,10 +138,13 @@ void DW1000Mac::decodeShortMACFrame(byte frame[], byte address[]) {
 	//memcpy(destinationAddress, frame+5, 2);
 }
 
-void DW1000Mac::decodeLongMACFrame(byte frame[], byte address[]) {
+void DW1000Mac::decodeLongMACFrame(byte frame[], byte address[], float anchor_coords[]) {
 	byte reverseAddress[2];
 	memcpy(reverseAddress, frame+13, 2);
 	reverseArray(address, reverseAddress, 2);
+
+    memcpy(anchor_coords, frame+15, 12);
+    
 	//we grab the destination address for the mac frame
 	//byte destinationAddress[8];
 	//memcpy(destinationAddress, frame+5, 8);
