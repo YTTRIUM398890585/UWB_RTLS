@@ -58,14 +58,14 @@ void loop()
 
 	tagCoords = multilateration(uwb_data, false);
 
-	if (millis() - last_pub > 500) {
+	if (millis() - last_pub > PUB_PERIOD_MS) {
 		rosPublishLocation(uwb_data, tagCoords);
 		last_pub = millis();
 	}
 
 #ifdef DEBUG
 	// Print the list of known anchors and current tag coordinates
-	if (millis() - last_print > 1000) {
+	if (millis() - last_print > PRINT_PERIOD_MS) {
 		Serial.print("millis: ");
 		Serial.println(millis());
 		uwb_data.print_list();
@@ -73,6 +73,5 @@ void loop()
 		last_print = millis();
 	}
 #endif
-
 #endif
 }

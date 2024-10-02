@@ -56,48 +56,38 @@ void rosPublishLocation(AnchorLinkedList& uwb_data, Vector3f tagCoords)
 
     size_t size = uwb_data.getSize();
 
-    if (size == 0) {
-        pub_msg.tag_coords.x = 0;
-        pub_msg.tag_coords.y = 0;
-        pub_msg.tag_coords.z = 0;
+    // Allocate memory for the anchors array
+    pub_msg.anchors.data = (micro_ros_interfaces__msg__AnchorData*)malloc(size * sizeof(micro_ros_interfaces__msg__AnchorData));
+    pub_msg.anchors.size = size;
+    pub_msg.anchors.capacity = size;
 
-        // publish message
-	    RCSOFTCHECK(rcl_publish(&publisher, &pub_msg, NULL));
-    } else {
-        // Allocate memory for the anchors array
-        pub_msg.anchors.data = (micro_ros_interfaces__msg__AnchorData*)malloc(size * sizeof(micro_ros_interfaces__msg__AnchorData));
-        pub_msg.anchors.size = size;
-        pub_msg.anchors.capacity = size;
+    AnchorLinkedList::AnchorNode* temp = uwb_data.getHead();
 
-        AnchorLinkedList::AnchorNode* temp = uwb_data.getHead();
+    for (size_t i = 0; i < size; i++) {
+        micro_ros_interfaces__msg__AnchorData anchor_data;
 
-        for (size_t i = 0; i < size; i++) {
-            micro_ros_interfaces__msg__AnchorData anchor_data;
+        anchor_data.anchor_addr = temp->next->anchor_addr;
+        anchor_data.anchor_coords.x = temp->next->anchor_coords[0];
+        anchor_data.anchor_coords.y = temp->next->anchor_coords[1];
+        anchor_data.anchor_coords.z = temp->next->anchor_coords[2];
+        anchor_data.anchor_distance = temp->next->distance[0];
+        anchor_data.dbm = temp->next->dbm;
 
-            anchor_data.anchor_addr = temp->next->anchor_addr;
-            anchor_data.anchor_coords.x = temp->next->anchor_coords[0];
-            anchor_data.anchor_coords.y = temp->next->anchor_coords[1];
-            anchor_data.anchor_coords.z = temp->next->anchor_coords[2];
-            anchor_data.anchor_distance = temp->next->distance[0];
-            anchor_data.dbm = temp->next->dbm;
+        temp = temp->next;
 
-            temp = temp->next;
+        pub_msg.anchors.data[i] = anchor_data;
 
-            pub_msg.anchors.data[i] = anchor_data;
+    }
 
-        }
+    pub_msg.tag_coords.x = tagCoords.x();
+    pub_msg.tag_coords.y = tagCoords.y();
+    pub_msg.tag_coords.z = tagCoords.z();
 
-        pub_msg.tag_coords.x = tagCoords.x();
-        pub_msg.tag_coords.y = tagCoords.y();
-        pub_msg.tag_coords.z = tagCoords.z();
+    // publish message
+    RCSOFTCHECK(rcl_publish(&publisher, &pub_msg, NULL));
 
-        // publish message
-	    RCSOFTCHECK(rcl_publish(&publisher, &pub_msg, NULL));
-
-        // Free the allocated memory
-        // the pub msg function is splitted, so that this will not run twice and crash
-        free(pub_msg.anchors.data);
-    } 
+    // Free the allocated memory
+    free(pub_msg.anchors.data);
 }
 
 #endif

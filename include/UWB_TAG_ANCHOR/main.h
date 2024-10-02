@@ -12,9 +12,11 @@ const char* host = "192.168.0.155";
 uint16_t portNum = 50000;
 
 unsigned long last_pub = 0;
+const unsigned long PUB_PERIOD_MS = 100;
 
 #endif
 
 #ifdef DEBUG
 	unsigned long last_print = 0;
+    const unsigned long PRINT_PERIOD_MS = 1000;
 #endif

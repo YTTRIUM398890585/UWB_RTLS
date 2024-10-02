@@ -7,7 +7,6 @@
 
 #include <rcl/rcl.h>
 #include <rclc/rclc.h>
-#include <rclc/executor.h>
 
 #include "micro_ros_interfaces/msg/tag_pub.h"
 
