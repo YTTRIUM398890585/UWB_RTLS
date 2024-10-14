@@ -16,7 +16,7 @@ void errorHandler()
 void setupMicroRos()
 {
 	// Configure transoport to be wifi
-	IPAddress agent_ip(192, 168, 28, 96);
+	IPAddress agent_ip(192, 168, 101, 96);
 	size_t agent_port = 8888;
 
 	char ssid[] = "Yttrium";
