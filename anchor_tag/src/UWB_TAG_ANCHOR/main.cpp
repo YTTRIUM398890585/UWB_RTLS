@@ -130,16 +130,18 @@ void multilaterationTaskCode(void* pvParameters)
 		//     last_pub = millis();
 		// }
 
-#ifdef DEBUG
-		// Print the list of known anchors and current tag coordinates
-		if (millis() - last_print > PRINT_PERIOD_MS) {
-			Serial.print("millis: ");
-			Serial.println(millis());
-			// uwb_data.print_list();
-			// mul_data.print_list();
-			// printVector(tagCoords, "Tag Coordinates");
-			last_print = millis();
-		}
+#if defined(IS_TAG) && defined(DEBUG)
+	static unsigned long last_print = 0;
+	const unsigned long PRINT_PERIOD_MS = 1000;
+
+	// Print the list of known anchors and current tag coordinates
+	if (millis() - last_print > PRINT_PERIOD_MS) {
+		Serial.print("millis: ");
+		Serial.println(millis());
+		// uwb_data.print_list();
+		// printVector(tagCoords, "Tag Coordinates");
+		last_print = millis();
+	}
 #endif
 
 		// Send a notification to rangingTask(),
