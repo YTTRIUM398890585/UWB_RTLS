@@ -62,8 +62,12 @@ void loop()
 		rosPublishLocation(uwb_data, tagCoords);
 		last_pub = millis();
 	}
+#endif
 
-#ifdef DEBUG
+#if defined(IS_TAG) && defined(DEBUG)
+	static unsigned long last_print = 0;
+	const unsigned long PRINT_PERIOD_MS = 1000;
+
 	// Print the list of known anchors and current tag coordinates
 	if (millis() - last_print > PRINT_PERIOD_MS) {
 		Serial.print("millis: ");
@@ -72,6 +76,5 @@ void loop()
 		printVector(tagCoords, "Tag Coordinates");
 		last_print = millis();
 	}
-#endif
 #endif
 }
