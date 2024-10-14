@@ -29,6 +29,12 @@ public:
 	void update_anchor(uint16_t anchor_addr, float distance, float dbm);
 	void delete_anchor(uint16_t anchor_addr);
 
+    void copyFrom(const AnchorLinkedList& other);
+
+    void clearDistance();
+
+    void clear();
+
 	void print_list();
 
 	AnchorNode* getHead()

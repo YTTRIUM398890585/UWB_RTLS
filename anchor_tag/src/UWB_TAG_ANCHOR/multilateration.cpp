@@ -2,17 +2,19 @@
 
 #include "UWB_TAG_ANCHOR/multilateration.h"
 
+AnchorLinkedList mul_data;
+
 // TODO: add filtering to the distance measurements
 // TODO: error handling for the case of not enough anchors, or colinear anchors
 
 /**
  * @brief compute the position of the tag using multilateration
  *
- * @param uwb_data linked list of anchors
+ * @param mul_data linked list of anchors
  * @param debugPrints to print debug information
  * @return Eigen::Vector3f
  */
-Vector3f multilateration(AnchorLinkedList& uwb_data, bool debugPrints)
+Vector3f multilateration(AnchorLinkedList& mul_data, bool debugPrints)
 {
 	// Multilateration /////////////////////////////////////
 	// A = [2(x0-xi) 2(y0-yi) 2(z0-zi)] for anchor row i = 0, 1, 2, ...
@@ -25,12 +27,12 @@ Vector3f multilateration(AnchorLinkedList& uwb_data, bool debugPrints)
 	r << 0, 0, 0;
 
 	// total number of anchors
-	size_t num_anchors = uwb_data.getSize();
+	size_t num_anchors = mul_data.getSize();
 
 	// only continue if there are atleast 3 anchors
 	if (num_anchors >= 3) {
 		// get the pointer to the dummy node
-		AnchorLinkedList::AnchorNode* temp = uwb_data.getHead();
+		AnchorLinkedList::AnchorNode* temp = mul_data.getHead();
 
 		// set temp to be the first anchor after the dummy node, and make this the reference anchor
 		// reference anchor is used to minus the distance from the other anchors to linearised the system

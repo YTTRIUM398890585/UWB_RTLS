@@ -24,9 +24,6 @@ using namespace Eigen;
 
 #include "UWB_TAG_ANCHOR/DW1000Handlers.h"
 
-// TODO: Implement the function to send publish current tag coordinates to ros
-// TODO: Implement publish anchor coords
-
 void setup()
 {
 	// Initialise serial connection for debugging
@@ -37,10 +34,36 @@ void setup()
 	// Initialise UWB device
 	initDW1000(PIN_SPI_SCK, PIN_SPI_MISO, PIN_SPI_MOSI, PIN_RST, PIN_SPI_CS, PIN_IRQ, ANTENNA_DELAY);
 
+	// create a task that will be executed in the rangingTaskCode() function,
+	// with priority 1 and executed on core 0
+	xTaskCreatePinnedToCore(rangingTaskCode, /* Task function. */
+	                        "rangingTask",   /* name of task. */
+	                        10000,           /* Stack size of task */
+	                        NULL,            /* parameter of the task */
+	                        1,               /* priority of the task */
+	                        &rangingTask,    /* Task handle to keep track of created task */
+	                        0);              /* pin task to core 0 */
+	delay(500);
+
 #ifdef IS_TAG
 	// Initialise microROS
-	setupMicroRos();
+	// setupMicroRos();
+
+	// create a task that will be executed in the multilaterationTask() function,
+	// with priority 1 and executed on core 1
+	xTaskCreatePinnedToCore(multilaterationTaskCode, /* Task function. */
+	                        "multilaterationTask",   /* name of task. */
+	                        10000,                   /* Stack size of task */
+	                        NULL,                    /* parameter of the task */
+	                        1,                       /* priority of the task */
+	                        &multilaterationTask,    /* Task handle to keep track of created task */
+	                        1);                      /* pin task to core 1 */
+	delay(500);
 #endif
+
+	/* Send a notification to rangingTask(), bringing it out of the Blocked state. */
+	// to kick start the rangingTask
+	xTaskNotifyGive(rangingTask);
 
 	Serial.println("Setup complete");
 
@@ -48,30 +71,83 @@ void setup()
 	delay(500);
 }
 
-void loop()
+void loop() { }
+
+void rangingTaskCode(void* pvParameters)
 {
-	// This needs to be called on every iteration of the main program loop
-	DW1000Ranging.loop();
+	Serial.print("rangingTask running on core ");
+	Serial.println(xPortGetCoreID());
+
+	for (;;) {
+		// This needs to be called on every iteration of the main program loop
+		DW1000Ranging.loop();
 
 #ifdef IS_TAG
-	Vector3f tagCoords;
+		// check for sufficient data to perform filtering and multilateration
+		if (true) {
+			// check that multilateration is not running
+			// so can copy the uwb_data to mul_data
+			// this should be just a poll with no waiting
+			// if (ulTaskNotifyTake(pdTRUE, portMAX_DELAY)) {
+			// 	// // copy uwb_data to mul_data
+            //     // mul_data.copyFrom(uwb_data);
 
-	tagCoords = multilateration(uwb_data, false);
+            //     // // clear distance fields in uwb_data, only clear range not the nodes
+            //     // uwb_data.clearDistance();
 
-	if (millis() - last_pub > PUB_PERIOD_MS) {
-		rosPublishLocation(uwb_data, tagCoords);
-		last_pub = millis();
+			// 	// Send a notification to multilaterationTask(), bringing it out of the Blocked state.
+			// 	xTaskNotifyGive(multilaterationTask);
+			// }
+
+            ulTaskNotifyTake(pdTRUE, 1000);
+
+	        Serial.print("rangingTask");
+
+            xTaskNotifyGive(multilaterationTask);
+		}
+#endif
 	}
+}
+
+#ifdef IS_TAG
+void multilaterationTaskCode(void* pvParameters)
+{
+	Serial.print("multilaterationTask running on core ");
+	Serial.println(xPortGetCoreID());
+
+	for (;;) {
+		// Block to wait for multilaterationTask() to notify this task to start running
+		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+		// Perform filtering (not implemented) + multilateration on mul_data
+		// Vector3f tagCoords;
+
+		// tagCoords = multilateration(mul_data, false);
+
+		// Publish the tag coordinates to microROS
+		// if (millis() - last_pub > PUB_PERIOD_MS) {
+		//     rosPublishLocation(mul_data, tagCoords);
+		//     last_pub = millis();
+		// }
 
 #ifdef DEBUG
-	// Print the list of known anchors and current tag coordinates
-	if (millis() - last_print > PRINT_PERIOD_MS) {
-		Serial.print("millis: ");
-		Serial.println(millis());
-		uwb_data.print_list();
-		printVector(tagCoords, "Tag Coordinates");
-		last_print = millis();
+		// Print the list of known anchors and current tag coordinates
+		if (millis() - last_print > PRINT_PERIOD_MS) {
+			Serial.print("millis: ");
+			Serial.println(millis());
+			// uwb_data.print_list();
+			// mul_data.print_list();
+			// printVector(tagCoords, "Tag Coordinates");
+			last_print = millis();
+		}
+#endif
+
+		// Send a notification to rangingTask(),
+		// telling it that multilateration is complete and mul_data is ready to be updated
+		xTaskNotifyGive(rangingTask);
+
+        // // Add a delay to prevent watchdog timeout
+        // vTaskDelay(pdMS_TO_TICKS(100));
 	}
-#endif
-#endif
 }
+#endif
