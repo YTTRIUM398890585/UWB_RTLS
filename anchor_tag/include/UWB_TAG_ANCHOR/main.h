@@ -1,17 +1,18 @@
 #pragma once
+#include <Arduino.h>
+
+SemaphoreHandle_t xMutex;
+
+TaskHandle_t rangingTask;
+void rangingTaskCode(void* pvParameters);
 
 #ifdef IS_TAG
-// CONSTANTS
-// The tag will update a server with its location information
-// allowing it to be remotely tracked
-// Wi-Fi credentials
-const char* ssid = "INSERT SSID HERE";
-const char* password = "INSERT WIFI PASSWORD HERE";
-// IP address of server to send location information to
-const char* host = "192.168.0.155";
-uint16_t portNum = 50000;
+AnchorLinkedList mul_data;
+TaskHandle_t multilaterationTask;
+void multilaterationTaskCode(void* pvParameters);
+
+bool new_data = false;
 
 unsigned long last_pub = 0;
 const unsigned long PUB_PERIOD_MS = 1000;
-
 #endif

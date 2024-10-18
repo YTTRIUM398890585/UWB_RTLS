@@ -7,13 +7,13 @@
 AnchorLinkedList::AnchorLinkedList()
 {
 	// allocate memory for a dummy node and make it the head
-    // the first node in the linked list is a dummy node all the real anchors is after it
+	// the first node in the linked list is a dummy node all the real anchors is after it
 	this->head = (struct AnchorNode*)malloc(sizeof(struct AnchorNode));
 
 	// set values for dummy node
 	this->head->anchor_addr = 0;
 
-    memset(this->head->distance, 0, sizeof(this->head->distance));
+	memset(this->head->distance, 0, sizeof(this->head->distance));
 
 	this->head->anchor_coords[0] = 0.0;
 	this->head->anchor_coords[1] = 0.0;
@@ -22,7 +22,7 @@ AnchorLinkedList::AnchorLinkedList()
 	this->head->dbm = 0.0;
 
 	this->head->prev = NULL;
-    this->head->next = NULL;
+	this->head->next = NULL;
 
 	// set tail to be same as head since its only one node
 	this->tail = this->head;
@@ -33,16 +33,17 @@ AnchorLinkedList::AnchorLinkedList()
 
 /**
  * @brief Destroy the Anchor Linked List object
- * 
+ *
  */
-AnchorLinkedList::~AnchorLinkedList() {
-    // start from the tail and delete each node to free malloc until list is empty
-    while(this->size > 0){
-        this->delete_anchor(this->tail->anchor_addr);
-    }
+AnchorLinkedList::~AnchorLinkedList()
+{
+	// start from the tail and delete each node to free malloc until list is empty
+	while (this->size > 0) {
+		this->delete_anchor(this->tail->anchor_addr);
+	}
 
-    // free the dummy head node
-    free(this->head);
+	// free the dummy head node
+	free(this->head);
 }
 
 /**
@@ -101,7 +102,7 @@ void AnchorLinkedList::add_anchor(uint16_t anchor_addr, float* p_anchor_coords)
 	new_node->anchor_addr = anchor_addr;
 
 	// set all distance to be 0, distance will be updated in the update anchor function
-    memset(new_node->distance, 0, sizeof(new_node->distance));
+	memset(new_node->distance, 0, sizeof(new_node->distance));
 
 	// copy the x, y, z, coordinate
 	memcpy(new_node->anchor_coords, p_anchor_coords, sizeof(new_node->anchor_coords));
@@ -125,7 +126,7 @@ void AnchorLinkedList::add_anchor(uint16_t anchor_addr, float* p_anchor_coords)
 
 /**
  * @brief update the anchor node with the wanted anchor address with the values from DW1000
- * 
+ *
  * @param anchor_addr wanted anchor address
  * @param distance measured distance
  * @param dbm measured dBm
@@ -136,14 +137,21 @@ void AnchorLinkedList::update_anchor(uint16_t anchor_addr, float distance, float
 	AnchorNode* temp = this->find_anchor(anchor_addr);
 
 	if (temp != NULL) {
-        // shift the distance array to the right and update the first element with the new distance
-        for (auto i = sizeof(temp->distance)/sizeof(*temp->distance) - 1; i > 0; --i) {
-            temp->distance[i] = temp->distance[i - 1];
+		// shift the distance array to the right and update the first element with the new distance
+		for (auto i = MAX_BUFFER_SIZE - 1; i > 0; --i) {
+			temp->distance[i] = temp->distance[i - 1];
+		}
+
+		temp->distance[0] = distance;
+
+        // check if the buffer is full
+        if (temp->distance[MAX_BUFFER_SIZE - 1] != 0) {
+            temp->buffer_full = true;
+        } else {
+            temp->buffer_full = false;
         }
 
-        temp->distance[0] = distance;
-
-        // update dbm of the node
+		// update dbm of the node
 		temp->dbm = dbm;
 	}
 	else {
@@ -156,34 +164,35 @@ void AnchorLinkedList::update_anchor(uint16_t anchor_addr, float distance, float
 
 /**
  * @brief delete a node with anchor_addr in the linked list
- * 
+ *
  * @param anchor_addr anchor address to be deleted
  */
 void AnchorLinkedList::delete_anchor(uint16_t anchor_addr)
 {
-    // temp pointer pointing to the node with the wanted anchor address, which is to be deleted
+	// temp pointer pointing to the node with the wanted anchor address, which is to be deleted
 	AnchorNode* temp = this->find_anchor(anchor_addr);
 
 	if (temp != NULL) {
-        // not be possible to deleted the head but possible to delete the tail
-        // deleting tail is an edge case to be handled differently
-        if (temp == this->tail) {
-            // update tail to be the new tail
-            this->tail = temp->prev;
-        } else {
-            // set the prev of the node after temp to be the node before temp
-            temp->next->prev = temp->prev;
-        }
+		// not be possible to deleted the head but possible to delete the tail
+		// deleting tail is an edge case to be handled differently
+		if (temp == this->tail) {
+			// update tail to be the new tail
+			this->tail = temp->prev;
+		}
+		else {
+			// set the prev of the node after temp to be the node before temp
+			temp->next->prev = temp->prev;
+		}
 
-        // set the next of the node before temp to be the node after temp
-        // this handles tail edge case by default
-        temp->prev->next = temp->next;
+		// set the next of the node before temp to be the node after temp
+		// this handles tail edge case by default
+		temp->prev->next = temp->next;
 
-        // free malloc for temp
+		// free malloc for temp
 		free(temp);
 
-        // decrement the size of list
-	    this->size--;
+		// decrement the size of list
+		this->size--;
 	}
 	else {
 #ifdef DEBUG
@@ -194,38 +203,104 @@ void AnchorLinkedList::delete_anchor(uint16_t anchor_addr)
 }
 
 /**
- * @brief print out the whole linked list
+ * @brief check if all anchors have full buffer
  * 
+ * @return true/false if all anchors have full buffer
+ */
+bool AnchorLinkedList::all_buffer_full() {
+    AnchorNode* temp = head;
+    while (temp->next != NULL) {
+        if (!temp->next->buffer_full) {
+            return false;
+        }
+        temp = temp->next;
+    }
+    return true;
+}
+
+/**
+ * @brief copy the whole linked list from another linked list
+ *
+ * @param other the list to be copied from
+ */
+void AnchorLinkedList::copyFrom(const AnchorLinkedList& other)
+{
+	// Clear the current list
+	this->clear();
+
+	AnchorNode* current = other.head;
+	while (current->next != nullptr) {
+		// Create a new node and copy address and coordinates
+		this->add_anchor(current->next->anchor_addr, current->next->anchor_coords);
+
+		// Copy the distance and dbm
+		AnchorNode* newNode = this->tail;
+		memcpy(newNode->distance, current->next->distance, sizeof(newNode->distance));
+		newNode->dbm = current->next->dbm;
+
+		current = current->next;
+	}
+}
+
+/**
+ * @brief clear the distance field of the whole list
+ *
+ */
+void AnchorLinkedList::clearDistance()
+{
+	AnchorNode* current = head;
+	while (current->next != nullptr) {
+		memset(current->next->distance, 0, sizeof(current->next->distance));
+        current->next->buffer_full = false;
+		current = current->next;
+	}
+}
+
+/**
+ * @brief clear the whole list
+ *
+ */
+void AnchorLinkedList::clear()
+{
+	// start from the tail and delete each node to free malloc until list is empty
+	while (this->size > 0) {
+		this->delete_anchor(this->tail->anchor_addr);
+	}
+}
+
+/**
+ * @brief print out the whole linked list
+ *
  */
 void AnchorLinkedList::print_list()
 {
-    // temp pointer starting from head
+	// temp pointer starting from head
 	AnchorNode* temp = this->head;
 
 	// print from head with dummy node ignored
-    if (this->size == 0) {
-        Serial.println(" ========= No anchors =========");
-    }
+	if (this->size == 0) {
+		Serial.println(" ========= No anchors =========");
+	}
 
 	while (temp->next != NULL) {
 		Serial.print("Dev ");
 		Serial.print(temp->next->anchor_addr, HEX);
 		Serial.print(" ");
-        Serial.print(temp->next->dbm);
+		Serial.print(temp->next->dbm);
 		Serial.print(" dBm ");
-        Serial.print("Coords (m): ");
-        Serial.print(temp->next->anchor_coords[0]);
-        Serial.print(" ");
-        Serial.print(temp->next->anchor_coords[1]);
-        Serial.print(" ");
-        Serial.println(temp->next->anchor_coords[2]);
+		Serial.print("Coords (m): ");
+		Serial.print(temp->next->anchor_coords[0]);
+		Serial.print(" ");
+		Serial.print(temp->next->anchor_coords[1]);
+		Serial.print(" ");
+		Serial.println(temp->next->anchor_coords[2]);
 
-        Serial.print("Distance (m): ");
+		Serial.print("Distance (m): ");
 
-        for (auto i = 0; i < sizeof(this->head->distance)/sizeof(*this->head->distance); i++) {
-            Serial.print(temp->next->distance[i]);
-            Serial.print(" ");
-        }
+		for (auto i = 0; i < MAX_BUFFER_SIZE; i++) {
+			Serial.print(temp->next->distance[i]);
+			Serial.print(" ");
+		}
 		Serial.println("");
 
 		temp = temp->next;

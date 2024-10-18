@@ -13,10 +13,8 @@
 #include <ArduinoEigen.h>
 using namespace Eigen;
 
-#include "UWB_TAG_ANCHOR/define.h"
-#include "UWB_TAG_ANCHOR/main.h"
-
 #ifdef IS_TAG
+#include "UWB_TAG_ANCHOR/link.h"
 #include "UWB_TAG_ANCHOR/utils.h"
 #include "UWB_TAG_ANCHOR/multilateration.h"
 #include "UWB_TAG_ANCHOR/microROS.h"
@@ -24,8 +22,8 @@ using namespace Eigen;
 
 #include "UWB_TAG_ANCHOR/DW1000Handlers.h"
 
-// TODO: Implement the function to send publish current tag coordinates to ros
-// TODO: Implement publish anchor coords
+#include "UWB_TAG_ANCHOR/define.h"
+#include "UWB_TAG_ANCHOR/main.h"
 
 void setup()
 {
@@ -34,47 +32,124 @@ void setup()
 	Serial.println(__FILE__);
 	Serial.println(__DATE__);
 
+	// Create the mutex
+	xMutex = xSemaphoreCreateMutex();
+
 	// Initialise UWB device
 	initDW1000(PIN_SPI_SCK, PIN_SPI_MISO, PIN_SPI_MOSI, PIN_RST, PIN_SPI_CS, PIN_IRQ, ANTENNA_DELAY);
+
+	// create a task that will be executed in the rangingTaskCode() function,
+	// with priority 1 and executed on core 1
+	xTaskCreatePinnedToCore(rangingTaskCode, /* Task function. */
+	                        "rangingTask",   /* name of task. */
+	                        10000,           /* Stack size of task */
+	                        NULL,            /* parameter of the task */
+	                        1,               /* priority of the task */
+	                        &rangingTask,    /* Task handle to keep track of created task */
+	                        1);              /* pin task to core 1 */
+	delay(500);
 
 #ifdef IS_TAG
 	// Initialise microROS
 	setupMicroRos();
+
+	// create a task that will be executed in the multilaterationTask() function,
+	// with priority 1 and executed on core 0
+	xTaskCreatePinnedToCore(multilaterationTaskCode, /* Task function. */
+	                        "multilaterationTask",   /* name of task. */
+	                        10000,                   /* Stack size of task */
+	                        NULL,                    /* parameter of the task */
+	                        1,                       /* priority of the task */
+	                        &multilaterationTask,    /* Task handle to keep track of created task */
+	                        0);                      /* pin task to core 0 */
+	delay(500);
 #endif
 
 	Serial.println("Setup complete");
-
-	// Short pause before starting main loop
-	delay(500);
 }
 
-void loop()
+void loop() { }
+
+void rangingTaskCode(void* pvParameters)
 {
-	// This needs to be called on every iteration of the main program loop
-	DW1000Ranging.loop();
+	Serial.print("rangingTask running on core ");
+	Serial.println(xPortGetCoreID());
+
+	for (;;) {
+		DW1000Ranging.loop();
 
 #ifdef IS_TAG
-	Vector3f tagCoords;
+		// TODO: by right freeRTOS notification is more efficient than using a flag, but i skill issue
+		// Check:
+		// 1) if there is sufficient data to perform multilateration
+		// 2) // TODO: if ranging loop is not waiting for a range response (this should be done in
+		// DW1000Ranging.loop())
+		if (uwb_data.all_buffer_full() && new_data == false) {
+			// Poll for mutex to access mul_data
+			if (xSemaphoreTake(xMutex, 0) == pdTRUE) {
+				Serial.println("rangingTask accessing shared resource");
 
-	tagCoords = multilateration(uwb_data, false);
+				// Copy the uwb_data to mul_data (this clears mul_data before copying)
+				mul_data.copyFrom(uwb_data);
 
-	if (millis() - last_pub > PUB_PERIOD_MS) {
-		rosPublishLocation(uwb_data, tagCoords);
-		last_pub = millis();
-	}
+				// Set flag for multilateration task
+				new_data = true;
+
+				// Release the mutex after accessing the shared resource
+				xSemaphoreGive(xMutex);
+
+				// Clear distance fields in uwb_data, only clear range not the nodes
+				uwb_data.clearDistance();
+			}
+		}
 #endif
+
+		// Add a short delay to prevent tight loop
+		vTaskDelay(pdMS_TO_TICKS(1));
+	}
+}
+
+#ifdef IS_TAG
+void multilaterationTaskCode(void* pvParameters)
+{
+	Serial.print("multilaterationTask running on core ");
+	Serial.println(xPortGetCoreID());
+
+	for (;;) {
+		// Check if there is new data to perform multilateration (busy waiting)
+		if (new_data) {
+			// Wait for mutex before accessing access mul_data
+			if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
+				Serial.println("multilaterationTask accessing shared resource");
+
+				// Perform filtering + multilateration on mul_data
+				Vector3f tagCoords = multilateration(mul_data, false);
+
+				// Publish the position
+				rosPublishLocation(mul_data, tagCoords);
+
+				// Reset the flag
+				new_data = false;
 
 #if defined(IS_TAG) && defined(DEBUG)
-	static unsigned long last_print = 0;
-	const unsigned long PRINT_PERIOD_MS = 1000;
+				static unsigned long last_print = 0;
+				const unsigned long PRINT_PERIOD_MS = 1000;
 
-	// Print the list of known anchors and current tag coordinates
-	if (millis() - last_print > PRINT_PERIOD_MS) {
-		Serial.print("millis: ");
-		Serial.println(millis());
-		uwb_data.print_list();
-		printVector(tagCoords, "Tag Coordinates");
-		last_print = millis();
-	}
+				// Print the list of known anchors and current tag coordinates
+				if (millis() - last_print > PRINT_PERIOD_MS) {
+					Serial.print("millis: ");
+					Serial.println(millis());
+					mul_data.print_list();
+					printVector(tagCoords, "Tag Coordinates");
+					last_print = millis();
+				}
 #endif
+				// Release the mutex after accessing the shared resource
+				xSemaphoreGive(xMutex);
+			}
+		}
+		// Add a short delay to prevent tight loop
+		vTaskDelay(pdMS_TO_TICKS(1));
+	}
 }
+#endif
