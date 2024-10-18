@@ -138,11 +138,18 @@ void AnchorLinkedList::update_anchor(uint16_t anchor_addr, float distance, float
 
 	if (temp != NULL) {
 		// shift the distance array to the right and update the first element with the new distance
-		for (auto i = sizeof(temp->distance) / sizeof(*temp->distance) - 1; i > 0; --i) {
+		for (auto i = MAX_BUFFER_SIZE - 1; i > 0; --i) {
 			temp->distance[i] = temp->distance[i - 1];
 		}
 
 		temp->distance[0] = distance;
+
+        // check if the buffer is full
+        if (temp->distance[MAX_BUFFER_SIZE - 1] != 0) {
+            temp->buffer_full = true;
+        } else {
+            temp->buffer_full = false;
+        }
 
 		// update dbm of the node
 		temp->dbm = dbm;
@@ -196,6 +203,22 @@ void AnchorLinkedList::delete_anchor(uint16_t anchor_addr)
 }
 
 /**
+ * @brief check if all anchors have full buffer
+ * 
+ * @return true/false if all anchors have full buffer
+ */
+bool AnchorLinkedList::all_buffer_full() {
+    AnchorNode* temp = head;
+    while (temp->next != NULL) {
+        if (!temp->next->buffer_full) {
+            return false;
+        }
+        temp = temp->next;
+    }
+    return true;
+}
+
+/**
  * @brief copy the whole linked list from another linked list
  *
  * @param other the list to be copied from
@@ -212,7 +235,7 @@ void AnchorLinkedList::copyFrom(const AnchorLinkedList& other)
 
 		// Copy the distance and dbm
 		AnchorNode* newNode = this->tail;
-		memcpy(newNode->distance, current->next->distance, sizeof(current->next->distance));
+		memcpy(newNode->distance, current->next->distance, sizeof(newNode->distance));
 		newNode->dbm = current->next->dbm;
 
 		current = current->next;
@@ -228,6 +251,7 @@ void AnchorLinkedList::clearDistance()
 	AnchorNode* current = head;
 	while (current->next != nullptr) {
 		memset(current->next->distance, 0, sizeof(current->next->distance));
+        current->next->buffer_full = false;
 		current = current->next;
 	}
 }
@@ -273,7 +297,7 @@ void AnchorLinkedList::print_list()
 
 		Serial.print("Distance (m): ");
 
-		for (auto i = 0; i < sizeof(this->head->distance) / sizeof(*this->head->distance); i++) {
+		for (auto i = 0; i < MAX_BUFFER_SIZE; i++) {
 			Serial.print(temp->next->distance[i]);
 			Serial.print(" ");
 		}

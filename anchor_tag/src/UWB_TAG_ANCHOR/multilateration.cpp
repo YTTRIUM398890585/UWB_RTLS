@@ -2,9 +2,6 @@
 
 #include "UWB_TAG_ANCHOR/multilateration.h"
 
-AnchorLinkedList mul_data;
-
-// TODO: add filtering to the distance measurements
 // TODO: error handling for the case of not enough anchors, or colinear anchors
 
 /**
@@ -35,9 +32,12 @@ Vector3f multilateration(AnchorLinkedList& mul_data, bool debugPrints)
 		AnchorLinkedList::AnchorNode* temp = mul_data.getHead();
 
 		// set temp to be the first anchor after the dummy node, and make this the reference anchor
-		// reference anchor is used to minus the distance from the other anchors to linearised the system
+		// reference anchor is used to minus the distance from the other anchors to linearise the system
 		temp = temp->next;
 		AnchorLinkedList::AnchorNode* reference_anchor = temp;
+
+        // calculate the average distance of the reference anchor
+        float reference_distance = filterAverageDistance(reference_anchor->distance);
 
 		// since the reference anchor is used to minus the distance from the other anchors:
 		// dimension of A is num_anchors - 1 by 3
@@ -53,8 +53,11 @@ Vector3f multilateration(AnchorLinkedList& mul_data, bool debugPrints)
 			A(i, 1) = 2 * (reference_anchor->anchor_coords[1] - temp->next->anchor_coords[1]);
 			A(i, 2) = 2 * (reference_anchor->anchor_coords[2] - temp->next->anchor_coords[2]);
 
+            // calculate the average distance of the anchor
+            float distance = filterAverageDistance(temp->next->distance);
+
 			// clang-format off
-            d(i) = pow(temp->next->distance[0], 2) - pow(reference_anchor->distance[0], 2)
+            d(i) = pow(distance, 2) - pow(reference_distance, 2)
                 - pow(temp->next->anchor_coords[0], 2) + pow(reference_anchor->anchor_coords[0], 2)
                 - pow(temp->next->anchor_coords[1], 2) + pow(reference_anchor->anchor_coords[1], 2)
                 - pow(temp->next->anchor_coords[2], 2) + pow(reference_anchor->anchor_coords[2], 2);
@@ -111,4 +114,43 @@ Vector3f multilateration(AnchorLinkedList& mul_data, bool debugPrints)
 	return r;
 }
 
+/**
+ * @brief perform filtering of outliers and find average of the distances
+ * 
+ * @param p_distances pointer to the array of distances
+ * @return float 
+ */
+float filterAverageDistance(float *p_distances) {
+    // Sort the array using Bubble Sort
+    float temp;
+    for (size_t i = 0; i < AnchorLinkedList::MAX_BUFFER_SIZE - 1; i++) {
+        for (size_t j = 0; j < AnchorLinkedList::MAX_BUFFER_SIZE - i - 1; j++) {
+            if (p_distances[j] > p_distances[j + 1]) {
+                temp = p_distances[j];
+                p_distances[j] = p_distances[j + 1];
+                p_distances[j + 1] = temp;
+            }
+        }
+    }
+
+    // Calculate the median
+    float median;
+    if (AnchorLinkedList::MAX_BUFFER_SIZE % 2 == 0) {
+        median = (p_distances[AnchorLinkedList::MAX_BUFFER_SIZE / 2 - 1] + p_distances[AnchorLinkedList::MAX_BUFFER_SIZE / 2]) / 2.0f;
+    } else {
+        median = p_distances[AnchorLinkedList::MAX_BUFFER_SIZE / 2];
+    }
+
+    // Calculate the average of values that is within 10% of median
+    float sum = 0;
+    uint8_t count = 0; 
+
+    for (size_t i = 0; i < AnchorLinkedList::MAX_BUFFER_SIZE; i++) {
+        if (p_distances[i] > 0.9 * median && p_distances[i] < 1.1 * median) {
+            sum += p_distances[i];
+            count++;
+        }
+    }
+    return sum / float(count);
+}
 #endif
