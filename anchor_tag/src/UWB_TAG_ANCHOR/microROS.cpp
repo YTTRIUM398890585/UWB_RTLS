@@ -20,7 +20,7 @@ void setupMicroRos()
 	size_t agent_port = 8888;
 
 	char ssid[] = "Yttrium";
-	char psk[] = "Alohomora1";
+	char psk[] = "bananaonpizza";
 
 	set_microros_wifi_transports(ssid, psk, agent_ip, agent_port);
 	delay(2000);
